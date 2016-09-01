@@ -1,2 +1,3 @@
 # katas
-Gut Practice Make Much Perfect
+
+My humble dojo
