@@ -7,6 +7,10 @@ In this single-doPlayTurner, text-based game, there is a word which the player n
 -}
 module Main where
 
+import Data.Char (isLetter)
+
+
+
 main :: IO ()
 main = doPlayTurn . make 3 $ "hello"
 
@@ -29,14 +33,27 @@ doPlayTurn game = do
     then putStrLn "You won!"
   else if isLose game
     then putStrLn "You lost!"
-  -- Continue
-    else doGuessLetter game
+  else
+    doGuessLetter game
 
 doGuessLetter :: Game -> IO ()
 doGuessLetter game = do
   putStr "Guess a letter: "
-  (letter:_) <- getLine
-  doPlayTurn . guessLetter letter $ game
+  maybeValueLetter <- getLine
+  if null maybeValueLetter
+    then tryAgain "Cannot guess nothing."
+  else if length maybeValueLetter > 1
+    then tryAgain "Cannot guess multiple letters at once."
+  else if not . all isLetter $ maybeValueLetter
+    then tryAgain "Can only guess letters (a-z)."
+  else
+    doPlayTurn . guessLetter (head maybeValueLetter) $ game
+  where
+  tryAgain reason = do
+    putStrLn (reason ++ " Try again.")
+    doGuessLetter game
+
+
 
 
 
