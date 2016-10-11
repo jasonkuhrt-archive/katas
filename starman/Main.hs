@@ -8,6 +8,7 @@ In this single-doPlayTurner, text-based game, there is a word which the player n
 module Main where
 
 import Data.Char (isLetter)
+import Data.List (intersect, intersperse)
 
 
 
@@ -16,11 +17,11 @@ main = doPlayTurn . make 3 $ "hello"
 
 
 
-type Game   = (Werd, Mask, Stars)
-type Stars  = Int
-type Mask   = [Bool]
-type Werd   = String
-type Letter = Char
+type Game    = (Werd, Guesses, Stars)
+type Guesses = [Letter]
+type Stars   = Int
+type Werd    = String
+type Letter  = Char
 
 
 
@@ -46,6 +47,8 @@ doGuessLetter game = do
     then tryAgain "Cannot guess multiple letters at once."
   else if not . all isLetter $ maybeValueLetter
     then tryAgain "Can only guess letters (a-z)."
+  else if isGuessed (head maybeValueLetter) game
+    then tryAgain $ "You have already guessed "++show maybeValueLetter++"."
   else
     doPlayTurn . guessLetter (head maybeValueLetter) $ game
   where
@@ -60,38 +63,45 @@ doGuessLetter game = do
 -- Graphics --
 
 showStatus :: Game -> String
-showStatus game@(_,_, stars) =
-  show stars ++ " ★    " ++ showWerd game
+showStatus game =
+  showStars game
+  ++ "  |  " ++ showWerd game
+  ++ "  |  Guesses: " ++ showGuesses game
+
+showStars :: Game -> String
+showStars (_,_, stars) =
+  (++ " ★") . show $ stars
+
+showGuesses :: Game -> String
+showGuesses (_, "", _)      =  "(nothing)"
+showGuesses (_, guesses, _) = intersperse ' ' (reverse guesses)
 
 showWerd :: Game -> String
-showWerd (werd, mask, _) =
-  zipWith showLetter werd mask
-
-showLetter :: Letter -> Bool -> Char
-showLetter _      False = '_'
-showLetter letter _     = letter
+showWerd (werd, guesses, _) =
+  zipWith showLetter werd (fmap (flip elem guesses) werd)
+  where
+  showLetter :: Letter -> Bool -> Char
+  showLetter _      False = '_'
+  showLetter letter _     = letter
 
 
 
 -- Logic --
 
 isWin :: Game -> Bool
-isWin (_, mask, _) = and mask
+isWin (werd, guesses, _) =
+  length werd == length (intersect werd guesses)
 
 isLose :: Game -> Bool
 isLose (_,_, stars) = stars <= 0
 
+isGuessed :: Letter -> Game -> Bool
+isGuessed letter (_, guesses, _) = elem letter guesses
+
 guessLetter :: Letter -> Game -> Game
-guessLetter letter (werd, mask, stars)
-  | elem letter werd = (werd, mask', stars    )
-  | otherwise        = (werd, mask , stars - 1)
-  where
-  (_, mask') = unzip $ zipWith go werd mask
-  go letter' True  = (letter', True)
-  go letter' False
-    | letter == letter' = (letter', True)
-    | otherwise         = (letter', False)
+guessLetter letter (werd, guesses, stars)
+  | elem letter werd = (werd, letter : guesses, stars    )
+  | otherwise        = (werd, letter : guesses, stars - 1)
 
 make :: Stars -> Werd -> Game
-make stars werd = (werd, mask, stars) where
-  mask = replicate (length werd) False
+make stars werd = (werd, [], stars)
